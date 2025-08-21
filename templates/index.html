@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NYC Taxi Data Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>NYC Taxi Data Dashboard</h1>
+        
+        <div class="charts-container">
+            <div class="chart-card">
+                <h2>Trips by Hour of Day</h2>
+                <canvas id="tripsByHourChart"></canvas>
+            </div>
+            
+            <div class="chart-card">
+                <h2>Trips by Day (Last 30 days)</h2>
+                <canvas id="tripsByDayChart"></canvas>
+            </div>
+            
+            <div class="chart-card">
+                <h2>Top Pickup Locations</h2>
+                <canvas id="topLocationsChart"></canvas>
+            </div>
+            
+            <div class="chart-card">
+                <h2>Average Fare by Hour</h2>
+                <canvas id="avgFareChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load data and create charts
+        async function loadData() {
+            try {
+                const responses = await Promise.all([
+                    fetch('/api/trips_by_hour'),
+                    fetch('/api/trips_by_day'),
+                    fetch('/api/top_locations'),
+                    fetch('/api/avg_fare_by_hour')
+                ]);
+                
+                const [tripsByHour, tripsByDay, topLocations, avgFare] = await Promise.all(
+                    responses.map(r => r.json())
+                );
+                
+                createTripsByHourChart(tripsByHour);
+                createTripsByDayChart(tripsByDay);
+                createTopLocationsChart(topLocations);
+                createAvgFareChart(avgFare);
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+        
+        function createTripsByHourChart(data) {
+            const ctx = document.getElementById('tripsByHourChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.hours.map(h => `${h}:00`),
+                    datasets: [{
+                        label: 'Number of Trips',
+                        data: data.counts,
+                        backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createTripsByDayChart(data) {
+            const ctx = document.getElementById('tripsByDayChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.days,
+                    datasets: [{
+                        label: 'Trips per Day',
+                        data: data.counts,
+                        fill: false,
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createTopLocationsChart(data) {
+            const ctx = document.getElementById('topLocationsChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.locations,
+                    datasets: [{
+                        data: data.counts,
+                        backgroundColor: [
+                            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+                            '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF',
+                            '#4BC0C0', '#FFCD56'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createAvgFareChart(data) {
+            const ctx = document.getElementById('avgFareChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.hours.map(h => `${h}:00`),
+                    datasets: [{
+                        label: 'Average Fare ($)',
+                        data: data.fares,
+                        fill: true,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true
+                }
+            });
+        }
+        
+        // Load data when page loads
+        document.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+</html>
